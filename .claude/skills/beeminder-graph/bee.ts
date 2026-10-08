@@ -58,10 +58,11 @@ const addDays = (d: string, n: number) => tToDay(dayToT(d) + n * SID);
 const weekday = (d: string) => new Date(dayToT(d) * 1000).toLocaleDateString("en-US", { weekday: "short", timeZone: "UTC" });
 
 // The goal endpoint returns roadall dates as unix timestamps; convert them to daystamps in the goal's timezone.
-function apiRoadall(goal: any, timezone: string): Row[] {
-  const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: timezone, year: "numeric", month: "2-digit", day: "2-digit" });
-  return goal.roadall.map(([t, v, r]: [number | null, number | null, number | null]) => [
-    t == null ? null : fmt.format(new Date(t * 1000)).replaceAll("-", ""),
+// The first row can keep its raw goal-creation timestamp, which may fall on the previous local day, so its date comes from graph.json's tini.
+function apiRoadall(goal: any, params: Graph["params"]): Row[] {
+  const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: params.timezone, year: "numeric", month: "2-digit", day: "2-digit" });
+  return goal.roadall.map(([t, v, r]: [number | null, number | null, number | null], i: number) => [
+    i == 0 ? params.tini : t == null ? null : fmt.format(new Date(t * 1000)).replaceAll("-", ""),
     v,
     r,
   ]);
@@ -117,7 +118,7 @@ async function loadRun(dir: string): Promise<Run> {
 async function cmdNew(goalSlug: string) {
   const user = await fetchUser();
   const [goal, graph] = await Promise.all([fetchGoal(user, goalSlug), fetchGraph(user, goalSlug)]);
-  const rows = apiRoadall(goal, graph.params.timezone);
+  const rows = apiRoadall(goal, graph.params);
   checkConsistent(graph, rows);
   const stamp = new Date().toLocaleString("sv-SE").replace(" ", "T").replaceAll(":", "-");
   const dir = join(GRAPHS, goalSlug, stamp);
@@ -366,8 +367,8 @@ async function cmdApply(dir: string) {
   if (sameRows(run.before, run.after)) die("after.roadall.json is identical to before; nothing to send");
 
   const user = await fetchUser(), slug = run.goal.slug;
-  const tz = run.graph.params.timezone;
-  const current = apiRoadall(await fetchGoal(user, slug), tz);
+  const [currentGoal, currentGraph] = await Promise.all([fetchGoal(user, slug), fetchGraph(user, slug)]);
+  const current = apiRoadall(currentGoal, currentGraph.params);
   if (!sameRows(current, run.before)) die(`the goal's line changed since ${dir} was created; start a new run\n${fmtRows(current)}`);
 
   const res = await api(`${API}/users/${user}/goals/${slug}.json`, {
@@ -378,7 +379,7 @@ async function cmdApply(dir: string) {
   await Bun.write(join(dir, "apply-response.json"), JSON.stringify(res, null, 2));
 
   const graph = await fetchGraph(user, slug);
-  const stored = apiRoadall(await fetchGoal(user, slug), tz);
+  const stored = apiRoadall(await fetchGoal(user, slug), graph.params);
   await Bun.write(join(dir, "applied.roadall.json"), fmtRows(stored));
   const want = brain(run.graph, run.after), got = brain(graph, stored);
   const diff: string[] = [];
