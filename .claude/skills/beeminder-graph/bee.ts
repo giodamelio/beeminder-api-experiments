@@ -273,6 +273,18 @@ async function cmdRender(dir: string, opts: Record<string, string>) {
     t2 = (changed.length ? changed[changed.length - 1]! : after.gol.asof + 16 * SID) + 14 * SID;
   }
 
+  // Beebrain's default y range covers the data, not the line, so a tall break would run off the top.
+  // Both graphs share one range so they compare directly.
+  let vmin = Math.min(before.gol.vmin, after.gol.vmin), vmax = Math.max(before.gol.vmax, after.gol.vmax);
+  for (let t = t1; t <= t2; t += SID)
+    for (const roads of [before.roads, after.roads]) {
+      const v = br.rdf(roads, t);
+      vmin = Math.min(vmin, v); vmax = Math.max(vmax, v);
+    }
+  if (opts.vmin != null) vmin = Number(opts.vmin);
+  if (opts.vmax != null) vmax = Number(opts.vmax);
+  if (!Number.isFinite(vmin) || !Number.isFinite(vmax) || vmin >= vmax) die(`bad y range: --vmin ${vmin} --vmax ${vmax}`);
+
   const chromium = Bun.which("chromium") ?? die("chromium is not on PATH");
   const profile = await mkdtemp(join(tmpdir(), "bee-chromium-"));
   const browser = await puppeteer.launch({
@@ -292,7 +304,7 @@ async function cmdRender(dir: string, opts: Record<string, string>) {
       await page.setContent(`<!DOCTYPE html><html><body style="margin:0;background:#fff"><div id="g" style="width:${W}px;height:${H}px"></div></body></html>`);
       await page.addStyleTag({ path: join(VENDOR, "jsbrain.css") });
       for (const s of VENDOR_SCRIPTS) await page.addScriptTag({ path: join(VENDOR, s) });
-      const goal = { params: { ...run.graph.params, ...rowsToParams(rows) }, data: run.graph.data };
+      const goal = { params: { ...run.graph.params, ...rowsToParams(rows), vmin, vmax }, data: run.graph.data };
       await page.evaluate(async (goal, t1, t2, W, H) => {
         // @ts-ignore bgraph is a browser global from the vendored scripts
         const graph = new bgraph({
@@ -391,7 +403,8 @@ const USAGE = `usage: bun bee.ts <command> ...
   show <dir>                                  print the before and after rows
   break <dir> --from D --to D [--height V]    add days off, inclusive (default height 1000)
   check <dir>                                 run the safety checks on after.roadall.json
-  render <dir> [--from D --to D]              write before.png, after.png and index.html
+  render <dir> [--from D --to D] [--vmin V] [--vmax V]
+                                              write before.png, after.png and index.html
   apply <dir>                                 re-check, then PUT after.roadall.json`;
 
 const [cmd, ...rest] = process.argv.slice(2);

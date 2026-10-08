@@ -24,7 +24,7 @@ It needs `BEEMINDER_API_TOKEN` (a personal auth token), `chromium` on PATH and `
    - NEVER restate this skill's goals, rules or checks, such as that the past is untouched, that checks passed, or why the akrasia horizon limits the change. The check results are already on the page.
    - No intro sentence. Start with the first change.
    - For more than one change, use a `<ul>` with one `<li>` per change. No headings, styles or scripts.
-6. `render <dir>` writes `before.png`, `after.png` and `index.html` side by side. Pass `--from D --to D` for a specific window; the default is the changed days plus 14 days either side. Read both PNGs yourself and describe the difference, then give the user the `index.html` path.
+6. `render <dir>` writes `before.png`, `after.png` and `index.html` side by side. Pass `--from D --to D` for a specific window; the default is the changed days plus 14 days either side. Both graphs share a y-axis that covers the data and both lines across the window, unlike beeminder.com, which sizes it to the data alone. Pass `--vmin V` and/or `--vmax V` to set the y-axis yourself, for example to see detail near the baseline under a tall break. Read both PNGs yourself and describe the difference, then give the user the `index.html` path.
 7. Ask the user to approve. Only run `apply <dir>` after they explicitly say yes to this specific preview.
 8. `apply <dir>` re-runs the checks, refuses if the goal changed on Beeminder since `new`, sends the PUT, then re-fetches and confirms Beeminder stored the same line.
 
