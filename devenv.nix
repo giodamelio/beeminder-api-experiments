@@ -4,8 +4,23 @@
   config,
   inputs,
   ...
-}: {
+}: let
+  buzz = pkgs.buildGoModule rec {
+    pname = "buzz";
+    version = "0.86.1";
+    src = pkgs.fetchFromGitHub {
+      owner = "PinePeakDigital";
+      repo = "buzz";
+      rev = "v${version}";
+      hash = "sha256-vcpWT+vkEODnYNRBytytmAprj1ccXc1Sd3Oq8p0eidA=";
+    };
+    vendorHash = "sha256-Y6veZo7L54eA+y1hMTGKqMVoUamFpnIb+yzPi6eqo3M=";
+    ldflags = ["-s" "-w" "-X main.version=${version}"];
+    doCheck = false;
+  };
+in {
   packages = with pkgs; [
+    buzz
     hurl
     ungoogled-chromium
   ];
