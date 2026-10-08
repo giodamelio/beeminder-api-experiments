@@ -22,4 +22,9 @@
   };
 
   env.BEEMINDER_API_TOKEN = config.secretspec.secrets.BEEMINDER_API_TOKEN or "";
+
+  # Some setup for Hurl so you can just run the files directly
+  env.HURL_SECRET_token = config.secretspec.secrets.BEEMINDER_API_TOKEN or "";
+  env.HURL_VARIABLE_user = "giodamelio";
+  env.HURL_VARIABLE_goal = "unread-emails";
 }
