@@ -7,6 +7,7 @@
 }: {
   packages = with pkgs; [
     hurl
+    ungoogled-chromium
   ];
 
   languages.javascript = {
@@ -22,6 +23,9 @@
   };
 
   env.BEEMINDER_API_TOKEN = config.secretspec.secrets.BEEMINDER_API_TOKEN or "";
+
+  # Headless chromium renders graph text with no glyphs unless fontconfig can find a font
+  env.FONTCONFIG_FILE = pkgs.makeFontsConf {fontDirectories = [pkgs.dejavu_fonts];};
 
   # Some setup for Hurl so you can just run the files directly
   env.HURL_SECRET_token = config.secretspec.secrets.BEEMINDER_API_TOKEN or "";

@@ -11,3 +11,7 @@ devenv.local.yaml
 
 nvim.log
 node_modules/
+
+# Graph edit runs from the beeminder-graph skill
+graphs/*
+!graphs/.gitkeep
