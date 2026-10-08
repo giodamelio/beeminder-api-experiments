@@ -16,3 +16,7 @@ inputs:
 # If you have more than one devenv you can merge them
 #imports:
 # - ./backend
+
+secretspec:
+  enable: true
+  provider: keyring
