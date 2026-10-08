@@ -15,3 +15,7 @@ node_modules/
 # Graph edit runs from the beeminder-graph skill
 graphs/*
 !graphs/.gitkeep
+
+# buzz config and cache, rendered by devenv.nix with HOME pointed at the repo
+.buzzrc
+.buzz_version_cache
