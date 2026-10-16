@@ -59,10 +59,12 @@ const weekday = (d: string) => new Date(dayToT(d) * 1000).toLocaleDateString("en
 
 // The goal endpoint returns roadall dates as unix timestamps; convert them to daystamps in the goal's timezone.
 // The first row can keep its raw goal-creation timestamp, which may fall on the previous local day, so its date comes from graph.json's tini.
+// The last row's timestamp can be UTC midnight, which falls on the previous local day west of UTC, so its date comes from graph.json's tfin.
 function apiRoadall(goal: any, params: Graph["params"]): Row[] {
   const fmt = new Intl.DateTimeFormat("en-CA", { timeZone: params.timezone, year: "numeric", month: "2-digit", day: "2-digit" });
+  const last = goal.roadall.length - 1;
   return goal.roadall.map(([t, v, r]: [number | null, number | null, number | null], i: number) => [
-    i == 0 ? params.tini : t == null ? null : fmt.format(new Date(t * 1000)).replaceAll("-", ""),
+    i == 0 ? params.tini : t == null ? null : i == last ? params.tfin : fmt.format(new Date(t * 1000)).replaceAll("-", ""),
     v,
     r,
   ]);
