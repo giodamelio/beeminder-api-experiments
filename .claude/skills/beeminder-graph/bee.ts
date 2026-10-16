@@ -2,7 +2,7 @@
 import { createRequire } from "node:module";
 import { mkdtemp, mkdir, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, relative, resolve } from "node:path";
 import puppeteer from "puppeteer-core";
 import { createTwoFilesPatch } from "diff";
 import { html as diff2html } from "diff2html";
@@ -333,20 +333,42 @@ async function cmdRender(dir: string, opts: Record<string, string>) {
   const patch = createTwoFilesPatch("roadall.json", "roadall.json", fmtRows(run.before), fmtRows(run.after));
   const diffHtml = diff2html(patch, { drawFileList: false, outputFormat: "line-by-line" });
   const diffCss = await Bun.file(require.resolve("diff2html/bundles/css/diff2html.min.css")).text();
+  // The page links the vendored scripts in place, so it only works from inside the repo.
+  const vendorPath = relative(resolve(dir), VENDOR);
+  const goals = { before: { params: { ...run.graph.params, ...rowsToParams(run.before) }, data: run.graph.data }, after: { params: { ...run.graph.params, ...rowsToParams(run.after) }, data: run.graph.data } };
+  const goalsJson = JSON.stringify(goals).replace(/</g, "\\u003c");
   await Bun.write(join(dir, "index.html"), `<!DOCTYPE html>
 <html><head><meta charset="utf-8"><title>${esc(run.graph.params.yoog)}</title>
-<style>body{font-family:sans-serif;margin:16px}.pair{display:flex;gap:16px;flex-wrap:wrap}figure{margin:0}img{max-width:100%;border:1px solid #ccc}pre{background:#f4f4f4;padding:8px}.desc{max-width:80ch}</style>
+<style>body{font-family:sans-serif;margin:16px}.pair{display:flex;gap:16px;flex-wrap:wrap}figure{margin:0}pre{background:#f4f4f4;padding:8px}.desc{max-width:80ch}</style>
 <style>${diffCss}</style>
+<link rel="stylesheet" href="${vendorPath}/jsbrain.css">
+${VENDOR_SCRIPTS.map((s) => `<script src="${vendorPath}/${s}"></script>`).join("\n")}
 </head><body>
 <h1>${esc(run.graph.params.yoog)}</h1>
 <h2>Summary</h2>
 <div class="desc">${description}</div>
 <h2>Before/After</h2>
-<p>Graphs:${tToDay(t1)} to ${tToDay(t2)}</p>
+<p>Starting view: ${tToDay(t1)} to ${tToDay(t2)}. Ctrl+scroll to zoom, drag to pan; both graphs move together. <button id="reset">Reset view</button></p>
 <div class="pair">
-<figure><figcaption>Before</figcaption><img src="before.png"></figure>
-<figure><figcaption>After</figcaption><img src="after.png"></figure>
+<figure><figcaption>Before</figcaption><div id="g-before" style="width:${W}px"></div></figure>
+<figure><figcaption>After</figcaption><div id="g-after" style="width:${W}px"></div></figure>
 </div>
+<script>
+const GOALS = ${goalsJson};
+const graphs = [];
+for (const name of ["before", "after"]) {
+  const g = new bgraph({
+    divGraph: document.getElementById("g-" + name), roadEditor: false, headless: false, scrollZoom: true, buttonZoom: true,
+    showContext: true, showFocusRect: true, maxFutureDays: 365,
+    onZoom: (t1, t2) => graphs.forEach((other) => { if (other != g) other.setZoomRange(t1, t2); }),
+  });
+  graphs.push(g);
+  g.loadGoalJSON(GOALS[name]);
+}
+const reset = () => graphs.forEach((g) => g.setZoomRange(${t1}, ${t2}));
+setTimeout(reset, 300);
+document.getElementById("reset").onclick = reset;
+</script>
 <h2>Safety Check</h2><pre>${esc(report)}</pre>
 <h2>Data</h2>
 <h3>Diff</h3>

@@ -246,6 +246,11 @@ let defaults = {
   /** Callback function that gets invoked when an error is encountered in
       loading, processing, drawing, or editing the road */
   onError:      null,
+  /** Callback function that gets invoked whenever the visible x-axis range
+      changes, as onZoom(t1, t2) in unix time. Not invoked for
+      setZoomRange(), so mirroring the range onto another graph cannot feed
+      back. */
+  onZoom:       null,
 }
 
 /** This object defines default options for mobile browsers, where larger dots,
@@ -1919,6 +1924,13 @@ function resizeBrush() {
 /** Update context graph by recomputing its limits & resizing the brush in it */
 function reloadBrush() { resizeContext(); resizeBrush() }
 
+let suppressOnZoom = false
+function notifyZoom() {
+  if (suppressOnZoom || typeof opts.onZoom !== 'function') return
+  const [t1, t2] = nXSc.domain().map(d => d.getTime()/SMS)
+  opts.onZoom(t1, t2)
+}
+
 /** Gets called by d3.zoom when there has been a zoom event
  * associated with the focus graph */
 // D3 v7: zoom callbacks receive event as first parameter
@@ -1952,6 +1964,7 @@ function zoomed(event) {
 
   resizeBrush()
   updateGraphData()
+  notifyZoom()
   return
 }
 
@@ -6018,7 +6031,12 @@ this.getZoomRange = () => nXSc.domain().map(d => d.getTime()/SMS)
 @param {Number} t2 Right edge of the visible range (unix time) */
 this.setZoomRange = (t1, t2) => {
   if (road.length == 0) return
-  zoomToRange(t1, t2)
+  suppressOnZoom = true
+  try {
+    zoomToRange(t1, t2)
+  } finally {
+    suppressOnZoom = false
+  }
 }
 
 /** Initiates loading a new goal from the indicated url.

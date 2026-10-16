@@ -47,7 +47,9 @@ buzz only reads its config from `~/.buzzrc`. So the devenv shell runs it with `H
 
 ## Credit the bundled Beeminder code
 
-`.claude/skills/beeminder-graph/vendor/road/` contains files copied unmodified from [beeminder/road](https://github.com/beeminder/road) at commit `a271687e6f086fa6b63cef6bdc20d9195a29f5f4`. They are Beeminder's own graph engine (Beebrain) and graph renderer, so the checks and previews here match what beeminder.com shows.
+`.claude/skills/beeminder-graph/vendor/road/` contains files copied from [beeminder/road](https://github.com/beeminder/road) at commit `a271687e6f086fa6b63cef6bdc20d9195a29f5f4`. They are Beeminder's own graph engine (Beebrain) and graph renderer, so the checks and previews here match what beeminder.com shows.
+
+All files are unmodified except `bgraph.js`, which adds an `onZoom(t1, t2)` option. It fires whenever the visible range changes, except through `setZoomRange()`, so the preview can keep its before and after graphs in sync. Re-apply that patch when you update the vendored copy.
 
 Thanks to all the creators and contributes for making it open source so I can mess with it!
 
